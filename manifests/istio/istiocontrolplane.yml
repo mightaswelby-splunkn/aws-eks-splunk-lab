@@ -1,0 +1,182 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: istiocontrolplane
+spec:
+  profile: demo
+
+  meshConfig:
+    defaultConfig:
+      gatewayTopology:
+        numTrustedProxies: 1 #--Define upstream proxy count
+    accessLogFile: /dev/stdout
+    enableTracing: true
+  components:
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+        k8s:
+          serviceAnnotations:
+            service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled: "false" #--True by default, uses ELB
+            service.beta.kubernetes.io/aws-load-balancer-internal: "false" #--True by default, uses ELB
+            service.beta.kubernetes.io/aws-load-balancer-type: "external"
+            service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "instance"
+            service.beta.kubernetes.io/aws-load-balancer-ssl-cert: ${certarn}
+            service.beta.kubernetes.io/aws-load-balancer-ssl-negotiation-policy: "ELBSecurityPolicy-FS-1-2-Res-2020-10"
+            service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
+            service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443,8089,8088"
+            #service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: instance
+            service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
+            external-dns.alpha.kubernetes.io/hostname: "${domain_name}, *.${domain_name}"
+            external-dns.alpha.kubernetes.io/ttl: "300" #optional
+            service.beta.kubernetes.io/aws-load-balancer-name: "${cluster_name}"
+            service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: preserve_client_ip.enabled=false
+            service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: proxy_protocol_v2.enabled=true
+
+          service:
+            ports:
+              - name: https
+                nodePort: 31923
+                port: 443
+                protocol: TCP
+                targetPort: 8443
+              - name: http2
+                nodePort: 31115
+                port: 80
+                protocol: TCP
+                targetPort: 8080
+             
+              - name: https-mgmt
+                nodePort: 30071
+                port: 8089
+                protocol: TCP
+                targetPort: 15444
+              - name: https-hec
+                nodePort: 30072
+                port: 8088
+                protocol: TCP
+                targetPort: 15445
+              - name: tls-s2s
+                nodePort: 30074
+                port: 9998
+                protocol: TCP
+                targetPort: 15447
+    cni:
+      enabled: true
+  values:
+    cni:
+      excludeNamespaces:
+        - istio-system
+        - kube-system
+      logLevel: info
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: shared-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"
+      tls:
+        httpsRedirect: true
+    - port:
+        number: 443
+        name: https
+        protocol: HTTP
+      hosts:
+        - "*"
+    - port:
+        number: 8089
+        name: https-mgmt
+        protocol: HTTP
+      hosts:
+        - "*"
+    - port:
+        number: 8088
+        name: https-hec
+        protocol: HTTP
+      hosts:
+        - "*"
+    - port:
+        number: 9997
+        name: s2s-tcp
+        protocol: TCP
+      hosts:
+        - "*"
+    - port:
+        number: 9998
+        name: s2s-tls
+        protocol: TLS
+      hosts:
+        - "*"
+      tls:
+        mode: PASSTHROUGH
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: proxy-protocol
+  namespace: istio-system
+spec:
+  configPatches:
+  - applyTo: LISTENER
+    patch:
+      operation: MERGE
+      value:
+        listener_filters:
+        - name: envoy.listener.proxy_protocol
+        - name: envoy.listener.tls_inspector
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: proxy-protocol
+  namespace: istio-system
+spec:
+  configPatches:
+    - applyTo: LISTENER
+      patch:
+        operation: MERGE
+        value:
+          listener_filters:
+            - name: envoy.listener.proxy_protocol
+            - name: envoy.listener.tls_inspector
+  workloadSelector:
+    labels:
+      istio: ingressgateway
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: ingressgateway-settings
+  namespace: istio-system
+spec:
+  configPatches:
+    - applyTo: NETWORK_FILTER
+      match:
+        listener:
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+      patch:
+        operation: MERGE
+        value:
+          name: envoy.filters.network.http_connection_manager
+          typed_config:
+            "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+            skip_xff_append: false
+            use_remote_address: true
+            xff_num_trusted_hops: 1
+
