@@ -38,7 +38,7 @@ resource "kubectl_manifest" "istio" {
 }
 
 data "kubectl_path_documents" "istio_addons" {
-  pattern = "istio/samples/addons/*.yaml"
+  pattern          = "istio/samples/addons/*.yaml"
   disable_template = true
 }
 

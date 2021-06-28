@@ -29,18 +29,24 @@ module "eks" {
   vpc_id      = module.vpc.vpc_id
 
   worker_groups = [
-    # {
-    #   name                          = "worker-group-1"
-    #   instance_type                 = "c5n.large"
-    #   additional_userdata           = "echo foo bar"
-    #   asg_desired_capacity          = 2
-    #   additional_security_group_ids = [aws_security_group.worker_group_mgmt_one.id]
-    # },
     {
       name                          = "test-instances"
       instance_type                 = "c5n.2xlarge"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt_two.id]
-      asg_desired_capacity          = 2
+      asg_desired_capacity          = 1
+      asg_max_size = 5
+      tags = [
+        {
+          "key"                 = "k8s.io/cluster-autoscaler/enabled"
+          "propagate_at_launch" = "false"
+          "value"               = "true"
+        },
+        {
+          "key"                 = "k8s.io/cluster-autoscaler/${local.cluster_name}"
+          "propagate_at_launch" = "false"
+          "value"               = "owned"
+        }
+      ]
     },
   ]
 
