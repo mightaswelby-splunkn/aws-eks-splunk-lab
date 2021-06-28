@@ -23,3 +23,5 @@ resource "kubectl_manifest" "splunk-rolebinding" {
   yaml_body = element(data.kubectl_path_documents.splunk-rolebinding.documents, count.index)
 
 }
+
+
