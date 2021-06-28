@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+data:
+  merge.sh: |
+    #!/usr/bin/env bash
+    mkdir -p /opt/splunk/etc/certs/ || true
+    openssl rsa -AES256 -in /mnt/tls/tls.key -out /tmp/server.key -passout pass:password
+    cat /mnt/tls/tls.crt /mnt/tls/tls.key /mnt/tls/ca.crt >/opt/splunk/etc/certs/certmanager.pem
+    rm /tmp/server.key
+    cp /mnt/tls/ca.crt /usr/share/pki/ca-trust-source/anchors/
+    update-ca-trust
+kind: ConfigMap
+metadata:
+  name: certtool
+  namespace: splunk

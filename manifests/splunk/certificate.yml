@@ -4,15 +4,15 @@ metadata:
   name: cert
 spec:
   # Secret names are always required.
-  secretName: $(SPLUNK_SVC)-tls
+  secretName: s1-tls
   duration: 2160h # 90d
   renewBefore: 360h # 15d
   subject:
     organizations:
-      - spl-guru
+      - ${DOMAIN_NAME}
   # The use of the common name field has been deprecated since 2000 and is
   # discouraged from being used.
-  commonName: $(SPLUNK_SVC)
+  commonName: s1
   isCA: false
   privateKey:
     algorithm: RSA
@@ -23,9 +23,9 @@ spec:
     - client auth
   # At least one of a DNS Name, URI, or IP address is required.
   dnsNames:
-    - $(SPLUNK_SVC).renewing-shrimp.spl.guru
-    - splunk-$(SPLUNK_SVC)-standalone-service.splunk.svc.cluster.local
-    - splunk-$(SPLUNK_SVC)-standalone-headless.splunk.svc.cluster.local
+    - s1.${DOMAIN_NAME}
+    - splunk-s1-standalone-service.splunk.svc.cluster.local
+    - splunk-s1-standalone-headless.splunk.svc.cluster.local
 
   # uris:
   # - spiffe://cluster.local/ns/sandbox/sa/example

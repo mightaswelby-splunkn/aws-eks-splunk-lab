@@ -1,0 +1,85 @@
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: s1
+spec:
+  gateways:
+    - istio-system/shared-gateway
+  hosts:
+    - s1.${DOMAIN_NAME}
+  tcp:
+    - match:
+        - port: 9997
+      route:
+        - destination:
+            host: splunk-s1-standalone-service.splunk.svc.cluster.local
+            port:
+              number: 9997
+  tls:
+    - match:
+        - port: 9998
+          sniHosts:
+            - s1.${DOMAIN_NAME}
+      route:
+        - destination:
+            host: splunk-s1-standalone-service.splunk.svc.cluster.local
+            port:
+              number: 9998
+  http:
+    - name: "ui_insecure"
+      match:
+        - port: 80
+      route:
+        - destination:
+            host: splunk-s1-standalone-service.splunk.svc.cluster.local
+            port:
+              number: 8000
+    - name: "ui"
+      match:
+        - port: 443
+      route:
+        - destination:
+            host: splunk-s1-standalone-service.splunk.svc.cluster.local
+            port:
+              number: 8000
+          headers:
+            request:
+              set:
+                "X-Forwarded-Host": "s1.${DOMAIN_NAME}"
+                "X-Forwarded-Port": "443"
+                "X-Forwarded-Proto": https
+    - name: "hec"
+      match:
+        - port: 8088
+      route:
+        - destination:
+            host: splunk-s1-standalone-service.splunk.svc.cluster.local
+            port:
+              number: 8088
+    - name: "mgmt"
+      match:
+        - port: 8089
+      route:
+        - destination:
+            host: splunk-s1-standalone-service.splunk.svc.cluster.local
+            port:
+              number: 8089
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: splunk-mgmt
+spec:
+  host: splunk-s1-standalone-service.splunk.svc.cluster.local
+  trafficPolicy:
+    portLevelSettings:
+      - port:
+          number: 8089
+        tls:
+          mode: SIMPLE
+      - port:
+          number: 9998
+        tls:
+          mode: DISABLE

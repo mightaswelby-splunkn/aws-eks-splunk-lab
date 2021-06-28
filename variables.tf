@@ -53,3 +53,16 @@ variable "map_users" {
     },
   ]
 }
+
+
+variable "oras_user" {
+  type = string
+}
+variable "oras_token" {
+  type = string
+
+}
+variable "oras_objects" {
+  type    = string
+  default = ""
+}

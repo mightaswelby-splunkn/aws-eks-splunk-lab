@@ -1,0 +1,56 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: splunk-apps
+  namespace: splunk
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+  selector:
+    app: splunk-apps
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: splunk-apps
+  name: splunk-apps
+  namespace: splunk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: splunk-apps
+  template:
+    metadata:
+      labels:
+        app: splunk-apps
+    spec:
+      containers:
+        - env:
+            - name: ORAS_USER
+              valueFrom:
+                secretKeyRef:
+                  key: ORAS_USER
+                  name: app-registry
+            - name: ORAS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: ORAS_TOKEN
+                  name: app-registry
+            - name: IMAGES
+              value: "${ORAS_OBJECTS}"
+          image: ghcr.io/rfaircloth-splunk/app-install-server:v1.2.0
+          name: main
+          ports:
+            - containerPort: 80
+              name: www-http
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 250m
+              memory: 64Mi
