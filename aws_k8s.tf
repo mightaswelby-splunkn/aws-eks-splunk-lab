@@ -29,19 +29,18 @@ module "eks" {
   vpc_id      = module.vpc.vpc_id
 
   worker_groups = [
+    # {
+    #   name                          = "worker-group-1"
+    #   instance_type                 = "c5n.large"
+    #   additional_userdata           = "echo foo bar"
+    #   asg_desired_capacity          = 2
+    #   additional_security_group_ids = [aws_security_group.worker_group_mgmt_one.id]
+    # },
     {
-      name                          = "worker-group-1"
-      instance_type                 = "t3.small"
-      additional_userdata           = "echo foo bar"
-      asg_desired_capacity          = 2
-      additional_security_group_ids = [aws_security_group.worker_group_mgmt_one.id]
-    },
-    {
-      name                          = "worker-group-2"
-      instance_type                 = "t3.medium"
-      additional_userdata           = "echo foo bar"
+      name                          = "test-instances"
+      instance_type                 = "c5n.2xlarge"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt_two.id]
-      asg_desired_capacity          = 1
+      asg_desired_capacity          = 2
     },
   ]
 
