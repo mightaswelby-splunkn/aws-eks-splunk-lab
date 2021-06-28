@@ -34,7 +34,7 @@ module "eks" {
       instance_type                 = "c5n.2xlarge"
       additional_security_group_ids = [aws_security_group.worker_group_mgmt_two.id]
       asg_desired_capacity          = 1
-      asg_max_size = 5
+      asg_max_size                  = 5
       tags = [
         {
           "key"                 = "k8s.io/cluster-autoscaler/enabled"

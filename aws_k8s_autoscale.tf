@@ -54,10 +54,10 @@ data "aws_iam_policy_document" "worker_autoscaling" {
 }
 
 resource "helm_release" "cluster-autoscaler" {
-  name  = "cluster-autoscaler"
-  namespace = "kube-system"
-  chart = "cluster-autoscaler"
-  repository  = "https://kubernetes.github.io/autoscaler"
+  name       = "cluster-autoscaler"
+  namespace  = "kube-system"
+  chart      = "cluster-autoscaler"
+  repository = "https://kubernetes.github.io/autoscaler"
 
   depends_on = [aws_iam_role_policy_attachment.workers_autoscaling]
 
@@ -66,21 +66,21 @@ resource "helm_release" "cluster-autoscaler" {
     value = var.region
   }
   set {
-      name = "cloudProvider"
-      value = "aws"
+    name  = "cloudProvider"
+    value = "aws"
   }
   set {
     name  = "rbac.create"
     value = "true"
   }
-#   set {
-#     name  = "rbac.serviceAccount.name"
-#     value = module.cluster_autoscaler.iam_role_cluster_autoscaler_name
-#   }
-#   set {
-#     name  = "rbac.serviceAccount.eks.amazonaws.com/role-arn"
-#     value = module.cluster_autoscaler.iam_role_cluster_autoscaler_arn
-#   }
+  #   set {
+  #     name  = "rbac.serviceAccount.name"
+  #     value = module.cluster_autoscaler.iam_role_cluster_autoscaler_name
+  #   }
+  #   set {
+  #     name  = "rbac.serviceAccount.eks.amazonaws.com/role-arn"
+  #     value = module.cluster_autoscaler.iam_role_cluster_autoscaler_arn
+  #   }
   set {
     name  = "autoDiscovery.clusterName"
     value = local.cluster_name
