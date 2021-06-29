@@ -13791,7 +13791,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
-              value:
+              value: "splunk"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
