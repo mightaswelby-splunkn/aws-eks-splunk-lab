@@ -1,0 +1,127 @@
+---
+apiVersion: enterprise.splunk.com/v1
+kind: IndexerCluster
+metadata:
+  name: s1
+  finalizers:
+    - enterprise.splunk.com/delete-pvc
+spec:
+  clusterMasterRef:
+    name: s1cm
+  licenseMasterRef:
+    name: s1
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  volumes:
+    - name: tls
+      secret:
+        secretName: s1-idx-tls
+    - name: certtool
+      configMap:
+        name: certtool
+        defaultMode: 0777
+  defaults: |-
+    splunk:
+      conf:
+        - key: server
+          value:
+            content:
+              sslConfig:
+                certCreateScript: /mnt/certtool/merge.sh 
+                sslPassword: password
+                serverCert: /opt/splunk/etc/certs/certmanager.pem
+  serviceTemplate:
+    spec:
+      ports:
+        - name: tls-s2s
+          port: 9998
+          protocol: TCP
+          targetPort: 9998
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: s1-idx-cert
+spec:
+  # Secret names are always required.
+  secretName: s1-idx-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - ${DOMAIN_NAME}
+  # The use of the common name field has been deprecated since 2000 and is
+  # discouraged from being used.
+  commonName: s1-idx
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  # At least one of a DNS Name, URI, or IP address is required.
+  dnsNames:
+    - s1-idx.${DOMAIN_NAME}
+    - splunk-s1-indexer-service.splunk.svc.cluster.local
+    - splunk-s1-indexer-headless.splunk.svc.cluster.local
+
+  # uris:
+  # - spiffe://cluster.local/ns/sandbox/sa/example
+  # # Issuer references are always required.
+  issuerRef:
+    name: ca-issuer
+    # We can reference ClusterIssuers by changing the kind here.
+    # The default value is Issuer (i.e. a locally namespaced Issuer)
+    kind: ClusterIssuer
+    # This is optional since cert-manager will default to this value however
+    # if you are using an external issuer, change this to that issuer group.
+    group: cert-manager.io
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: s1-inputs
+spec:
+  gateways:
+    - istio-system/shared-gateway
+  hosts:
+    - s1-inputs.${DOMAIN_NAME}
+  tls:
+    - match:
+        - port: 9998
+          sniHosts:
+            - s1-inputs.${DOMAIN_NAME}
+      route:
+        - destination:
+            host: splunk-s1-indexer-service.splunk.svc.cluster.local
+            port:
+              number: 9998
+  http:
+    - name: "hec"
+      match:
+        - port: 8088
+      route:
+        - destination:
+            host: splunk-s1-indexer-service.splunk.svc.cluster.local
+            port:
+              number: 8088
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: s1-idxc
+spec:
+  host: splunk-s1-indexer-service.splunk.svc.cluster.local
+  trafficPolicy:
+    portLevelSettings:
+      - port:
+          number: 9998
+        tls:
+          mode: DISABLE

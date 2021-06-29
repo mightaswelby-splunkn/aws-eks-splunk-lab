@@ -8,6 +8,7 @@ spec:
   ports:
     - port: 80
       protocol: TCP
+      name: http-web
   selector:
     app: splunk-apps
 ---
@@ -46,7 +47,7 @@ spec:
           name: main
           ports:
             - containerPort: 80
-              name: www-http
+              name: http-web
           resources:
             limits:
               cpu: 500m

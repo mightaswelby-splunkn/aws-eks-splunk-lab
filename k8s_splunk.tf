@@ -37,21 +37,35 @@ resource "kubernetes_secret" "app_registry" {
 }
 
 
+resource "kubernetes_config_map" "splunk_license" {
+  metadata {
+    name      = "splunk-licenses"
+    namespace = kubernetes_namespace.splunk.metadata[0].name
+  }
+
+  data = {
+    "enterprise.lic" = "${file("${path.module}/.splunk_licenses/enterprise.lic")}"
+  }
+
+}
+
+
 data "kubectl_path_documents" "splunk" {
   pattern = "manifests/splunk/*.yml"
   vars = {
     ORAS_OBJECTS = var.oras_objects
-    DOMAIN_NAME = local.domain_name
+    DOMAIN_NAME  = local.domain_name
   }
 
 }
 
 resource "kubectl_manifest" "splunk" {
   depends_on = [
-    kubectl_manifest.splunk-rolebinding
+    kubectl_manifest.splunk-rolebinding,
+    kubernetes_config_map.splunk_license
   ]
   override_namespace = kubernetes_namespace.splunk.metadata[0].name
-  count     = length(data.kubectl_path_documents.splunk.documents)
-  yaml_body = element(data.kubectl_path_documents.splunk.documents, count.index)
+  count              = length(data.kubectl_path_documents.splunk.documents)
+  yaml_body          = element(data.kubectl_path_documents.splunk.documents, count.index)
 
 }
