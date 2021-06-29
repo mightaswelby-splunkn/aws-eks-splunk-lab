@@ -35,3 +35,4 @@ terraform.rc
 
 istio/*
 kubeconfig_*
+.splunk_licenses/*

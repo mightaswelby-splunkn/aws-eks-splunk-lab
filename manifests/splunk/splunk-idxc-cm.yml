@@ -23,7 +23,16 @@ spec:
       configMap:
         name: certtool
         defaultMode: 0777
-        
+  smartstore:
+    volumes:
+      - name: remote
+        path: /smartstore/s1
+        endpoint: https://${SMARTSTORE_BUCKET}
+        secretRef: s1-idxc-s3
+    indexes:
+      - name: default
+        remotePath: $_index_name
+        volumeName: remote
   defaults: |-
     splunk:
       conf:
